@@ -35,10 +35,9 @@ import Logger
 ///
 /// - Note: 앱 시작 시 `LoggerDemoApp.init()`에서 호출됩니다.
 enum LoggerSetup {
-    
     /// 공유 CrashLogPreserver 인스턴스
     static let crashPreserver = CrashLogPreserver(preserveCount: 100)
-    
+
     /// Logger 초기화
     ///
     /// 앱 시작 시 한 번 호출하여 Logger를 구성합니다.
@@ -49,10 +48,10 @@ enum LoggerSetup {
     static func configure() async {
         // 이전 크래시 확인
         await checkPreviousCrash()
-        
+
         let stream = LogStream.shared
         let inMemoryDestination = InMemoryLogDestination(stream: stream)
-        
+
         _ = await LoggerBuilder()
             .addOSLog(
                 subsystem: "com.logger.LoggerDemo",
@@ -66,23 +65,23 @@ enum LoggerSetup {
             .with(configuration: .debug)
             .withDefaultSanitizer()
             .buildAsShared()
-        
+
         // Signal Handler 등록 (전역 mmap 포인터 사용)
         // registerSignalHandlers()
     }
-    
+
     /// 이전 크래시 확인 및 로그 복구
     @MainActor
     private static func checkPreviousCrash() async {
         do {
             if let logs = try await crashPreserver.recover() {
                 print("⚠️ [CrashLogPreserver] 이전 크래시 감지: \(logs.count)개 로그 복구됨")
-                
+
                 // 복구된 로그 출력 (상위 5개만)
                 for log in logs.prefix(5) {
                     print("  - [\(log.level.name)] \(log.message)")
                 }
-                
+
                 if logs.count > 5 {
                     print("  ... 외 \(logs.count - 5)개")
                 }
@@ -91,7 +90,7 @@ enum LoggerSetup {
             print("⚠️ [CrashLogPreserver] 크래시 로그 복구 실패: \(error)")
         }
     }
-    
+
     /// Signal Handler 등록 (옵션)
     /// - Warning: 프로덕션에서 사용 시 주의 필요
     @MainActor
@@ -100,7 +99,7 @@ enum LoggerSetup {
         // 주의: Actor의 mmap 포인터에 직접 접근할 수 없으므로
         // 실제 구현 시 전역 변수나 다른 방법 필요
     }
-    
+
     /// 로그 파일 디렉토리 URL
     static var logDirectory: URL {
         let cachesDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
