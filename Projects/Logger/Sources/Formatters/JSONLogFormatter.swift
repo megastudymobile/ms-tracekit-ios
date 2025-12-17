@@ -10,20 +10,20 @@ import Foundation
 public struct JSONLogFormatter: LogFormatter {
     /// JSON 들여쓰기 여부
     public let prettyPrint: Bool
-    
+
     /// 날짜 포맷터
-    private let dateFormatter: ISO8601DateFormatter
-    
-    /// JSON 인코더
+    private nonisolated(unsafe) let dateFormatter: ISO8601DateFormatter
+
+    /// JSON 인코더 (Swift 6에서 Sendable이므로 nonisolated(unsafe) 불필요)
     private let encoder: JSONEncoder
-    
+
     public init(prettyPrint: Bool = false) {
         self.prettyPrint = prettyPrint
-        
-        self.dateFormatter = ISO8601DateFormatter()
+
+        dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        self.encoder = JSONEncoder()
+
+        encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if prettyPrint {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -31,7 +31,7 @@ public struct JSONLogFormatter: LogFormatter {
             encoder.outputFormatting = [.sortedKeys]
         }
     }
-    
+
     public func format(_ message: LogMessage) -> String {
         var logDict: [String: Any] = [
             "id": message.id.uuidString,
@@ -42,17 +42,17 @@ public struct JSONLogFormatter: LogFormatter {
             "message": message.message,
             "file": message.fileName,
             "function": message.function,
-            "line": message.line
+            "line": message.line,
         ]
-        
+
         if let metadata = message.metadata {
             logDict["metadata"] = metadata.mapValues { $0.value }
         }
-        
+
         if let userContext = message.userContext {
             logDict["context"] = userContext.toDictionary()
         }
-        
+
         do {
             let jsonData = try JSONSerialization.data(
                 withJSONObject: logDict,
@@ -64,4 +64,3 @@ public struct JSONLogFormatter: LogFormatter {
         }
     }
 }
-

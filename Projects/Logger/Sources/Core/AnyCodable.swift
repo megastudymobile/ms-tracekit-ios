@@ -7,30 +7,30 @@ import Foundation
 
 /// 타입 소거된 Codable 래퍼
 /// - Note: metadata에 다양한 타입의 값을 저장하기 위해 사용
-public struct AnyCodable: Codable, Sendable, Equatable, CustomStringConvertible {
+public struct AnyCodable: Codable, @unchecked Sendable, Equatable, CustomStringConvertible {
     public let value: Any
-    
+
     public init(_ value: Any) {
         self.value = value
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if container.decodeNil() {
-            self.value = NSNull()
+            value = NSNull()
         } else if let bool = try? container.decode(Bool.self) {
-            self.value = bool
+            value = bool
         } else if let int = try? container.decode(Int.self) {
-            self.value = int
+            value = int
         } else if let double = try? container.decode(Double.self) {
-            self.value = double
+            value = double
         } else if let string = try? container.decode(String.self) {
-            self.value = string
+            value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            self.value = array.map { $0.value }
+            value = array.map { $0.value }
         } else if let dictionary = try? container.decode([String: AnyCodable].self) {
-            self.value = dictionary.mapValues { $0.value }
+            value = dictionary.mapValues { $0.value }
         } else {
             throw DecodingError.dataCorruptedError(
                 in: container,
@@ -38,10 +38,10 @@ public struct AnyCodable: Codable, Sendable, Equatable, CustomStringConvertible 
             )
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch value {
         case is NSNull:
             try container.encodeNil()
@@ -61,7 +61,7 @@ public struct AnyCodable: Codable, Sendable, Equatable, CustomStringConvertible 
             try container.encode(String(describing: value))
         }
     }
-    
+
     public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         switch (lhs.value, rhs.value) {
         case is (NSNull, NSNull):
@@ -78,7 +78,7 @@ public struct AnyCodable: Codable, Sendable, Equatable, CustomStringConvertible 
             return false
         }
     }
-    
+
     public var description: String {
         String(describing: value)
     }
@@ -87,8 +87,8 @@ public struct AnyCodable: Codable, Sendable, Equatable, CustomStringConvertible 
 // MARK: - ExpressibleBy Protocols
 
 extension AnyCodable: ExpressibleByNilLiteral {
-    public init(nilLiteral: ()) {
-        self.value = NSNull()
+    public init(nilLiteral _: ()) {
+        value = NSNull()
     }
 }
 
@@ -118,13 +118,12 @@ extension AnyCodable: ExpressibleByStringLiteral {
 
 extension AnyCodable: ExpressibleByArrayLiteral {
     public init(arrayLiteral elements: Any...) {
-        self.value = elements
+        value = elements
     }
 }
 
 extension AnyCodable: ExpressibleByDictionaryLiteral {
     public init(dictionaryLiteral elements: (String, Any)...) {
-        self.value = Dictionary(uniqueKeysWithValues: elements)
+        value = Dictionary(uniqueKeysWithValues: elements)
     }
 }
-
