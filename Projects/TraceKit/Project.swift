@@ -27,22 +27,16 @@ let project = Project(
         ),
         .target(
             name: "TraceKitTests",
-            destinations: [.iPhone, .iPad, .mac, .appleWatch, .appleTv, .appleVision],
+            destinations: [.iPhone, .iPad],
             product: .unitTests,
             bundleId: "com.tracekit.TraceKitTests",
-            deploymentTargets: .multiplatform(
-                iOS: "15.0",
-                macOS: "12.0",
-                watchOS: "8.0",
-                tvOS: "15.0",
-                visionOS: "1.0"
-            ),
+            deploymentTargets: .iOS("15.0"),
             infoPlist: .default,
             sources: ["Tests/**"],
             dependencies: [
-                .target(name: "TraceKit"),
+                .target(name: "TraceKit")
             ]
-        ),
+        )
     ],
     schemes: [
         .scheme(
@@ -55,6 +49,6 @@ let project = Project(
             ),
             runAction: .runAction(configuration: .debug),
             archiveAction: .archiveAction(configuration: .release)
-        ),
+        )
     ]
 )

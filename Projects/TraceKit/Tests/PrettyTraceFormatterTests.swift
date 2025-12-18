@@ -188,7 +188,7 @@ struct PrettyTraceFormatterTests {
         let result = formatter.format(message)
 
         // Then
-        #expect(result.contains("key="))
+        #expect(result.contains("key:"))
         #expect(result.contains("value"))
     }
 
@@ -257,6 +257,6 @@ struct PrettyTraceFormatterTests {
         // Then
         #expect(result.contains("🔍"))
         #expect(result.contains("File.swift"))
-        #expect(result.contains("key="))
+        #expect(result.contains("key:"))
     }
 }
