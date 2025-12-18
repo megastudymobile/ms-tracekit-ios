@@ -123,3 +123,9 @@ iOSInjectionProject/
 
 # Build Server #
 buildServer.json
+
+# Tuist (TraceKitDemo only)
+Projects/TraceKitDemo/.tuist/
+Projects/TraceKitDemo/Derived/
+Projects/TraceKitDemo/*.xcodeproj
+Projects/TraceKitDemo/*.xcworkspace

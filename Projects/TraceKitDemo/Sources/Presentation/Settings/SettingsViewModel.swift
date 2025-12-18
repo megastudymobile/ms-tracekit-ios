@@ -50,10 +50,14 @@ final class SettingsViewModel: ObservableObject {
             flushInterval: flushInterval
         )
 
+        // Capture values before async context for concurrency safety
+        let levelName = minLevel.name
+        let rate = sampleRate
+        
         Task {
             await TraceKit.async.configure(configuration)
             await TraceKit.async.info(
-                "설정이 변경되었습니다: minLevel=\(minLevel.name), sampleRate=\(sampleRate)",
+                "설정이 변경되었습니다: minLevel=\(levelName), sampleRate=\(rate)",
                 category: "Settings"
             )
         }
