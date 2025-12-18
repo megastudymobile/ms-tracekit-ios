@@ -45,7 +45,7 @@ public actor AnalyticsTraceDestination: TraceDestination {
         // 파라미터 준비
         var parameters: [String: Any] = [
             "level": message.level.name,
-            "message": String(message.message.prefix(100)), // 100자 제한
+            "message": String(message.message.prefix(100)) // 100자 제한
         ]
 
         // 메타데이터 추가 (Analytics 파라미터 제한 고려)
@@ -101,7 +101,7 @@ public actor AnalyticsTraceDestination: TraceDestination {
 
 // MARK: - User Properties
 
-public extension AnalyticsLogDestination {
+public extension AnalyticsTraceDestination {
     /// 사용자 속성 설정
     func setUserProperty(_ value: String?, forName name: String) {
         Analytics.setUserProperty(value, forName: name)
@@ -116,7 +116,7 @@ public extension AnalyticsLogDestination {
     func setScreenName(_ screenName: String, screenClass: String? = nil) {
         Analytics.logEvent(AnalyticsEventScreenView, parameters: [
             AnalyticsParameterScreenName: screenName,
-            AnalyticsParameterScreenClass: screenClass ?? screenName,
+            AnalyticsParameterScreenClass: screenClass ?? screenName
         ])
     }
 }
