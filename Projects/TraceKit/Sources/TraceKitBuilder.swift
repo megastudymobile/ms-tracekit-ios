@@ -193,6 +193,7 @@ public final class TraceKitBuilder: @unchecked Sendable {
 
     /// 공유 인스턴스로 빌드
     @TraceKitActor
+    @discardableResult
     public func buildAsShared() async -> TraceKit {
         let logger = await build()
         TraceKit.setShared(logger)
