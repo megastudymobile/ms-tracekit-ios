@@ -13,9 +13,11 @@ final class TraceStream: ObservableObject {
 
     @Published private(set) var logs: [TraceMessage] = []
 
-    private let maxLogs = 500
+    private let maxLogs: Int
 
-    private init() {}
+    private init(maxLogs: Int = 500) {
+        self.maxLogs = maxLogs
+    }
 
     func append(_ message: TraceMessage) {
         logs.append(message)
