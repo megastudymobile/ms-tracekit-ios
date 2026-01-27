@@ -71,15 +71,47 @@ public final class TraceKit {
     // MARK: - Configuration
 
     /// 설정 업데이트
+    ///
+    /// 런타임에 TraceKit의 동작을 동적으로 변경합니다.
+    /// - Remote Config를 통한 원격 제어
+    /// - A/B 테스트 및 긴급 디버깅 모드 활성화
+    /// - 프로덕션 환경에서 로그 레벨 조정
+    ///
+    /// - Parameter newConfiguration: 적용할 새로운 설정
     public func configure(_ newConfiguration: TraceKitConfiguration) {
+        let oldConfiguration = configuration
         configuration = newConfiguration
-
+        
+        // 샘플러 업데이트 (새 샘플링 비율로 재생성)
+        if sampler != nil {
+            let newPolicy = SamplingPolicy(defaultRate: newConfiguration.sampleRate)
+            sampler = TraceSampler(policy: newPolicy)
+        }
+        
         // 버퍼 정책 업데이트
         if let buffer = buffer {
             Task {
                 await buffer.stopAutoFlush()
-                // 새 정책으로 버퍼 재시작 필요 시 처리
+                await buffer.startAutoFlush { [weak self] messages in
+                    await self?.dispatchToDestinations(messages)
+                }
             }
+        }
+        
+        // 설정 변경 로깅
+        Task { @TraceKitActor in
+            await self.info(
+                "TraceKit 설정 업데이트 완료",
+                category: "Configuration",
+                metadata: [
+                    "old_min_level": AnyCodable(oldConfiguration.minLevel.name),
+                    "new_min_level": AnyCodable(newConfiguration.minLevel.name),
+                    "old_sample_rate": AnyCodable(oldConfiguration.sampleRate),
+                    "new_sample_rate": AnyCodable(newConfiguration.sampleRate),
+                    "old_sanitizer": AnyCodable(oldConfiguration.isSanitizingEnabled),
+                    "new_sanitizer": AnyCodable(newConfiguration.isSanitizingEnabled)
+                ]
+            )
         }
     }
 

@@ -6,9 +6,13 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab: Tab = .generator
+    @State private var selectedTab: Tab = .analyticsRealtime
 
     enum Tab: String, CaseIterable {
+        case analyticsRealtime
+        case remoteConfig
+        case crashlyticsRealtime
+        case shoppingFlow
         case generator
         case settings
         case viewer
@@ -18,6 +22,10 @@ struct MainTabView: View {
 
         var title: String {
             switch self {
+            case .analyticsRealtime: return "Analytics"
+            case .remoteConfig: return "Config"
+            case .crashlyticsRealtime: return "Crashlytics"
+            case .shoppingFlow: return "Shopping"
             case .generator: return "Generator"
             case .settings: return "Settings"
             case .viewer: return "Viewer"
@@ -29,6 +37,10 @@ struct MainTabView: View {
 
         var icon: String {
             switch self {
+            case .analyticsRealtime: return "chart.bar"
+            case .remoteConfig: return "slider.horizontal.3"
+            case .crashlyticsRealtime: return "ladybug"
+            case .shoppingFlow: return "cart"
             case .generator: return "play.circle"
             case .settings: return "gearshape"
             case .viewer: return "list.bullet.rectangle"
@@ -40,6 +52,10 @@ struct MainTabView: View {
 
         var selectedIcon: String {
             switch self {
+            case .analyticsRealtime: return "chart.bar.fill"
+            case .remoteConfig: return "slider.horizontal.3"
+            case .crashlyticsRealtime: return "ladybug.fill"
+            case .shoppingFlow: return "cart.fill"
             case .generator: return "play.circle.fill"
             case .settings: return "gearshape.fill"
             case .viewer: return "list.bullet.rectangle.fill"
@@ -52,6 +68,30 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            AnalyticsRealtimeDemoView()
+                .tag(Tab.analyticsRealtime)
+                .tabItem {
+                    Label(Tab.analyticsRealtime.title, systemImage: selectedTab == .analyticsRealtime ? Tab.analyticsRealtime.selectedIcon : Tab.analyticsRealtime.icon)
+                }
+
+            RemoteConfigControlView()
+                .tag(Tab.remoteConfig)
+                .tabItem {
+                    Label(Tab.remoteConfig.title, systemImage: selectedTab == .remoteConfig ? Tab.remoteConfig.selectedIcon : Tab.remoteConfig.icon)
+                }
+
+            CrashlyticsRealtimeDemoView()
+                .tag(Tab.crashlyticsRealtime)
+                .tabItem {
+                    Label(Tab.crashlyticsRealtime.title, systemImage: selectedTab == .crashlyticsRealtime ? Tab.crashlyticsRealtime.selectedIcon : Tab.crashlyticsRealtime.icon)
+                }
+
+            ShoppingFlowDemoView()
+                .tag(Tab.shoppingFlow)
+                .tabItem {
+                    Label(Tab.shoppingFlow.title, systemImage: selectedTab == .shoppingFlow ? Tab.shoppingFlow.selectedIcon : Tab.shoppingFlow.icon)
+                }
+
             LogGeneratorView()
                 .tag(Tab.generator)
                 .tabItem {

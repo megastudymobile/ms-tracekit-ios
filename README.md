@@ -9,9 +9,11 @@ Swift 기반의 유연하고 확장 가능한 멀티플랫폼 로깅 프레임�
 
 ## 주요 기능
 
-- 다중 출력 대상 지원 (Console, OSLog, File, Sentry, Datadog, Firebase)
+- 다중 출력 대상 지원 (Console, OSLog, File)
+- Firebase 4대 서비스 통합 (Analytics, Crashlytics, Performance, Remote Config)
 - Actor 기반 스레드 안전성
 - 빌더 패턴을 통한 쉬운 구성
+- **런타임 동적 설정 변경** (앱 재시작 없이 설정 업데이트)
 - 민감정보 자동 마스킹
 - 로그 샘플링 및 버퍼링
 - 성능 추적 (Performance Tracing)
@@ -87,15 +89,20 @@ let prodLogger = await TraceKitBuilder.production().buildAsShared()
 
 ### 기본 제공
 
-- `ConsoleLogDestination` - 콘솔 출력 (stdout/stderr)
-- `OSLogDestination` - Apple os.log 시스템
-- `FileLogDestination` - 파일 저장
+- `ConsoleTraceDestination` - 콘솔 출력 (stdout/stderr)
+- `OSTraceDestination` - Apple os.log 시스템
+- `FileTraceDestination` - 파일 저장
 
-### 외부 연동 (별도 모듈)
+### Firebase 통합 (데모 앱 포함)
 
-- `TraceKitSentry` - Sentry 연동
-- `TraceKitDatadog` - Datadog 연동
-- `TraceKitFirebase` - Firebase Crashlytics 연동
+TraceKitDemo에서 Firebase 4대 서비스와의 통합 구현을 제공합니다:
+
+- `FirebaseAnalyticsTraceDestination` - Analytics 이벤트 전송
+- `FirebaseCrashlyticsTraceDestination` - Crashlytics 연동
+- `FirebasePerformanceTraceExtension` - Performance 모니터링
+- `FirebaseRemoteConfigManager` - 원격 설정 관리
+
+자세한 사용법은 [Firebase 통합 가이드](./Projects/TraceKitDemo/FIREBASE_MODULES_GUIDE.md)를 참고하세요.
 
 ## 고급 기능
 
@@ -151,6 +158,35 @@ if let crashLogs = await TraceKit.async.recoverCrashLogs() {
 }
 ```
 
+### 런타임 설정 변경
+
+```swift
+// 앱 실행 중 설정 변경 (앱 재시작 불필요)
+let newConfig = TraceKitConfiguration(
+    minLevel: .verbose,
+    isSanitizingEnabled: false,
+    sampleRate: 0.5
+)
+
+await TraceKit.async.configure(newConfig)
+// 즉시 새로운 설정으로 동작
+```
+
+### Firebase Remote Config 연동
+
+```swift
+// Firebase Console에서 원격으로 설정 제어
+let remoteConfigManager = FirebaseRemoteConfigManager()
+await remoteConfigManager.fetchAndActivate()
+
+// TraceKit에 자동 적용
+await remoteConfigManager.applyToTraceKit()
+
+// 실시간 자동 업데이트 (권장)
+await remoteConfigManager.startRealtimeUpdates()
+// Firebase Console 변경 시 2-3초 내 자동 반영
+```
+
 ## 런타임 설정 (Launch Arguments)
 
 Xcode에서 다음 launch argument로 로거를 제어할 수 있습니다:
@@ -173,29 +209,22 @@ Xcode에서 다음 launch argument로 로거를 제어할 수 있습니다:
 ```
 https://github.com/megastudymobile/ms-tracekit-ios
 ```
-3. 버전 규칙 선택 (예: "Up to Next Major Version" - 1.0.0)
+3. 버전 규칙 선택 (예: "Up to Next Major Version" - 1.2.0)
 4. 필요한 패키지 선택:
    - `TraceKit` - 코어 로깅 프레임워크 (필수)
-   - `TraceKitDatadog` - Datadog 연동 (선택)
-   - `TraceKitFirebase` - Firebase 연동 (선택)
-   - `TraceKitSentry` - Sentry 연동 (선택)
 
 #### Package.swift에서 설치
 
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.0.0")
+    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.2.0")
 ],
 targets: [
     .target(
         name: "MyApp",
         dependencies: [
-            .product(name: "TraceKit", package: "TraceKit"),
-            // 필요한 경우 연동 모듈 추가
-            // .product(name: "TraceKitDatadog", package: "TraceKit"),
-            // .product(name: "TraceKitFirebase", package: "TraceKit"),
-            // .product(name: "TraceKitSentry", package: "TraceKit")
+            .product(name: "TraceKit", package: "TraceKit")
         ]
     )
 ]
@@ -206,7 +235,7 @@ targets: [
 ```swift
 // Package.swift (Tuist 의존성)
 dependencies: [
-    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.0.0")
+    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.2.0")
 ]
 
 // Project.swift
@@ -233,6 +262,14 @@ let project = Project(
 - [고급 기능](./Documents/04-고급-기능.md)
 - [외부 연동](./Documents/05-외부-연동.md)
 - [런타임 설정](./Documents/06-런타임-설정.md)
+- [데모 앱](./Documents/07-데모-앱.md)
+
+### Firebase 통합
+
+- [Firebase 통합 모듈 가이드](./Projects/TraceKitDemo/FIREBASE_MODULES_GUIDE.md)
+  - Analytics, Crashlytics, Performance, Remote Config 연동
+  - 실시간 모니터링 및 원격 설정 관리
+  - 데모 앱에서 실제 구현 예제 확인
 
 ## 요구사항
 
@@ -255,6 +292,37 @@ let project = Project(
 | visionOS | ✅ | ✅ | ✅ | ✅ | 전체 기능 지원 |
 
 ⚠️ watchOS는 저장 공간이 제한적이므로 파일 로그 사용 시 retentionPolicy 설정 권장
+
+## 버전 히스토리
+
+### 1.2.0 (2026-01-27)
+
+**새로운 기능**
+- Firebase 4대 서비스 통합 (Analytics, Crashlytics, Performance, Remote Config)
+- 런타임 동적 설정 변경 기능 (`configure()` API)
+- Firebase Remote Config를 통한 원격 설정 관리
+- 실시간 자동 업데이트 지원 (Console 변경 시 2-3초 내 반영)
+- TraceKitDemo 독립 Tuist 프로젝트로 구성
+
+**개선사항**
+- Swift 6.0 Concurrency 완전 지원
+- Firebase 통합 데모 화면 추가
+- 설정 변경 이력 자동 로깅
+- 외부 연동 모듈 아키텍처 개선
+
+**문서**
+- [Firebase 통합 모듈 가이드](./Projects/TraceKitDemo/FIREBASE_MODULES_GUIDE.md) 추가
+- 데모 앱 README 업데이트
+
+### 1.1.0
+
+- 크래시 로그 보존 기능 추가
+- 멀티플랫폼 지원 (iOS, macOS, tvOS, watchOS, visionOS)
+- Launch Argument 런타임 설정
+
+### 1.0.0
+
+- 초기 릴리즈
 
 ## 라이선스
 

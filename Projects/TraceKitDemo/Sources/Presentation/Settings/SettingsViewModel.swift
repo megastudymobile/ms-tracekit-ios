@@ -17,6 +17,14 @@ final class SettingsViewModel: ObservableObject {
     @Published var flushInterval: Double = 5.0
 
     @Published var showAppliedFeedback: Bool = false
+    
+    // MARK: - Firebase Remote Config
+    
+    @Published var remoteConfigStatus: String = "대기 중"
+    @Published var isRefreshingConfig: Bool = false
+    @Published var remoteMinLevel: String = "-"
+    @Published var remoteSamplingRate: String = "-"
+    @Published var remoteConfigLastFetch: String = "-"
 
     // MARK: - Log Files
 
@@ -37,6 +45,7 @@ final class SettingsViewModel: ObservableObject {
 
     init() {
         loadLogFiles()
+        loadRemoteConfigStatus()
     }
 
     // MARK: - Settings Actions
@@ -77,7 +86,53 @@ final class SettingsViewModel: ObservableObject {
 
         applySettings()
     }
-
+    
+    // MARK: - Firebase Remote Config Actions
+    
+    func loadRemoteConfigStatus() {
+        Task {
+            let manager = TraceKitSetup.remoteConfigManager
+            
+            remoteMinLevel = await manager.minimumTraceLevel.name
+            remoteSamplingRate = String(format: "%.2f", await manager.samplingRate)
+            remoteConfigStatus = "로드됨"
+            remoteConfigLastFetch = formatDate(Date())
+        }
+    }
+    
+    func refreshRemoteConfig() {
+        isRefreshingConfig = true
+        remoteConfigStatus = "가져오는 중..."
+        
+        Task {
+            let manager = TraceKitSetup.remoteConfigManager
+            let success = await manager.fetchAndActivate()
+            
+            if success {
+                await manager.applyToTraceKit()
+                remoteConfigStatus = "적용 완료"
+                
+                remoteMinLevel = await manager.minimumTraceLevel.name
+                remoteSamplingRate = String(format: "%.2f", await manager.samplingRate)
+                remoteConfigLastFetch = formatDate(Date())
+                
+                await TraceKit.async.info(
+                    "Remote Config 갱신 완료",
+                    category: "Settings"
+                )
+            } else {
+                remoteConfigStatus = "가져오기 실패"
+                
+                await TraceKit.async.warning(
+                    "Remote Config 갱신 실패",
+                    category: "Settings"
+                )
+            }
+            
+            isRefreshingConfig = false
+        }
+    }
+    
     // MARK: - Log File Actions
 
     func loadLogFiles() {
@@ -185,6 +240,13 @@ final class SettingsViewModel: ObservableObject {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file
         return formatter.string(fromByteCount: bytes)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
