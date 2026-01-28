@@ -106,11 +106,9 @@ final class CrashlyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.error(
             "결제 실패: 카드 한도 초과",
             category: "Payment",
-            metadata: [
-                "errorCode": AnyCodable("CARD_LIMIT_EXCEEDED"),
-                "amount": AnyCodable(59800),
-                "cardType": AnyCodable("credit")
-            ]
+            ("errorCode", "CARD_LIMIT_EXCEEDED"),
+            ("amount", 59800),
+            ("cardType", "credit")
         )
         
         // Crashlytics 데이터 즉시 전송 (디버그 모드)
@@ -183,11 +181,9 @@ final class CrashlyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.error(
             "로그인 실패: 잘못된 비밀번호",
             category: "Auth",
-            metadata: [
-                "errorCode": AnyCodable("INVALID_PASSWORD"),
-                "attemptCount": AnyCodable(3),
-                "email": AnyCodable("user@example.com")
-            ]
+            ("errorCode", "INVALID_PASSWORD"),
+            ("attemptCount", 3),
+            ("email", "user@example.com")
         )
         
         // Crashlytics 데이터 즉시 전송 (디버그 모드)
@@ -251,11 +247,9 @@ final class CrashlyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.fatal(
             "치명적 오류: 데이터 손상 감지",
             category: "Database",
-            metadata: [
-                "errorCode": AnyCodable("DATA_CORRUPTION"),
-                "recordCount": AnyCodable(0),
-                "expectedCount": AnyCodable(150)
-            ]
+            ("errorCode", "DATA_CORRUPTION"),
+            ("recordCount", 0),
+            ("expectedCount", 150)
         )
         
         // Crashlytics 데이터 즉시 전송 (디버그 모드)
