@@ -25,11 +25,6 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       
-      - name: Validate Swift Package
-        run: |
-          swift build -c release
-          swift test
-      
       - name: Generate Changelog
         id: changelog
         run: |

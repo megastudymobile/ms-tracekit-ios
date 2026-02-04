@@ -6,10 +6,10 @@ on:
     branches: [main]
 
 jobs:
-  create-tag:
+  create-tag-and-release:
     # release/ 브랜치가 main으로 머지된 경우에만 실행
     if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/')
-    name: Create Release Tag
+    name: Create Release Tag and Release
     runs-on: macos-15
     permissions:
       contents: write
@@ -60,9 +60,52 @@ jobs:
           git push origin "$VERSION"
           echo "✅ Created and pushed tag: $VERSION"
       
-      - name: Skip tag creation
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## What's Changed
+            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ## Installation
+            
+            ### Swift Package Manager
+            
+            ```swift
+            dependencies: [
+                .package(url: "https://github.com/${{ github.repository }}", from: "${{ steps.version.outputs.VERSION }}")
+            ]
+            ```
+            
+            ---
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.changelog.outputs.PREVIOUS_TAG }}...${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Skip if tag exists
         if: steps.check_tag.outputs.exists == 'true'
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          echo "⚠️ Tag $VERSION already exists. Skipping tag creation."
-          echo "The existing tag will trigger the release workflow."
+          echo "⚠️ Tag $VERSION already exists. Skipping tag and release creation."
