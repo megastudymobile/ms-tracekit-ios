@@ -8,7 +8,6 @@ import TraceKit
 import FirebaseCore
 import FirebaseCrashlytics
 import FirebaseAnalytics
-// import FirebasePerformance // 임시 비활성화
 import FirebaseRemoteConfig
 
 /// TraceKit 초기화 설정
