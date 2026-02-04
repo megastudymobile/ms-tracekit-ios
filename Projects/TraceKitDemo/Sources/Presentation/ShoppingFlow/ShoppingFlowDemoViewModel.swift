@@ -102,11 +102,9 @@ final class ShoppingFlowDemoViewModel: ObservableObject {
         TraceKit.info(
             "결제가 성공적으로 완료되었습니다",
             category: "Payment",
-            metadata: [
-                "orderId": AnyCodable("ORD-2026-\(Int.random(in: 10000 ... 99999))"),
-                "amount": AnyCodable(59800),
-                "paymentMethod": AnyCodable("card"),
-            ]
+            ("orderId", "ORD-2026-\(Int.random(in: 10000...99999))"),
+            ("amount", 59800),
+            ("paymentMethod", "card")
         )
         firebaseStatus.lastEvent = "결제 완료"
         firebaseStatus.crashlyticsBreadcrumbCount += 1
@@ -163,12 +161,10 @@ final class ShoppingFlowDemoViewModel: ObservableObject {
         TraceKit.error(
             "결제 실패: 카드 한도 초과",
             category: "Payment",
-            metadata: [
-                "errorCode": AnyCodable("CARD_LIMIT_EXCEEDED"),
-                "amount": AnyCodable(59800),
-                "cardType": AnyCodable("credit"),
-                "retryable": AnyCodable(true),
-            ]
+            ("errorCode", "CARD_LIMIT_EXCEEDED"),
+            ("amount", 59800),
+            ("cardType", "credit"),
+            ("retryable", true)
         )
         firebaseStatus.analyticsEventCount += 1
         firebaseStatus.lastEvent = "trace_error (결제 실패)"

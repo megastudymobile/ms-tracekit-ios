@@ -22,6 +22,8 @@ final class LogGeneratorViewModel: ObservableObject {
             "timestamp": AnyCodable(Date().timeIntervalSince1970),
         ]
     }
+    
+    // Note: sampleMetadata는 조건부 사용을 위해 기존 API 유지
 
     func log(level: TraceLevel) {
         let message = customMessage.isEmpty ? sampleMessage(for: level) : customMessage
@@ -140,7 +142,7 @@ final class LogGeneratorViewModel: ObservableObject {
 
     func logNetworkFullCycle() {
         Task {
-            // 1. Request
+            // 1. Request (중첩된 dictionary는 기존 API 사용)
             TraceKit.debug(
                 "API 요청 시작",
                 category: "Network",
@@ -157,7 +159,7 @@ final class LogGeneratorViewModel: ObservableObject {
 
             try? await Task.sleep(nanoseconds: 500_000_000)
 
-            // 2. Response
+            // 2. Response (중첩된 dictionary는 기존 API 사용)
             TraceKit.info(
                 "API 응답 수신",
                 category: "Network",
@@ -175,14 +177,12 @@ final class LogGeneratorViewModel: ObservableObject {
 
             try? await Task.sleep(nanoseconds: 200_000_000)
 
-            // 3. Completion
+            // 3. Completion - 새 API 사용 가능 ✅
             TraceKit.verbose(
                 "주문 처리 완료",
                 category: "Network",
-                metadata: [
-                    "orderId": "ORD-2025-001234",
-                    "processingTime": 0.712,
-                ]
+                ("orderId", "ORD-2025-001234"),
+                ("processingTime", 0.712)
             )
         }
     }
