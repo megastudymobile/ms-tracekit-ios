@@ -11,6 +11,7 @@ Swift 기반의 유연하고 확장 가능한 멀티플랫폼 로깅 프레임�
 
 - 다중 출력 대상 지원 (Console, OSLog, File)
 - Firebase 4대 서비스 통합 (Analytics, Crashlytics, Performance, Remote Config)
+- **✨ Variadic Parameters Metadata API** (v1.2.1+, AnyCodable 래핑 불필요)
 - Actor 기반 스레드 안전성
 - 빌더 패턴을 통한 쉬운 구성
 - **런타임 동적 설정 변경** (앱 재시작 없이 설정 업데이트)
@@ -28,12 +29,23 @@ Swift 기반의 유연하고 확장 가능한 멀티플랫폼 로깅 프레임�
 ```swift
 import TraceKit
 
-// 기본 로거 사용
+// 가장 간단한 사용 (동기 API)
+TraceKit.info("앱이 시작되었습니다")
+TraceKit.warning("메모리 사용량이 높습니다")
+TraceKit.error("네트워크 연결 실패")
+
+// 비동기 API (로그 완료 대기 필요 시)
 Task {
-    await TraceKit.async.info("앱이 시작되었습니다")
-    await TraceKit.async.warning("메모리 사용량이 높습니다")
-    await TraceKit.async.error("네트워크 연결 실패")
+    await TraceKit.async.info("로그 완료까지 대기")
 }
+
+// ✨ v1.2.1+ 메타데이터 추가 (권장)
+TraceKit.info(
+    "API 호출 성공",
+    category: "Network",
+    ("statusCode", 200),
+    ("url", "https://api.example.com")
+)
 ```
 
 ### 빌더를 사용한 커스텀 설정
@@ -107,6 +119,31 @@ TraceKitDemo에서 Firebase 4대 서비스와의 통합 구현을 제공합니�
 ## 고급 기능
 
 ### 메타데이터 추가
+
+TraceKit는 두 가지 방식의 메타데이터 API를 지원합니다:
+
+**✨ 새로운 Variadic Parameters API (v1.2.1+, 권장)**
+
+```swift
+// AnyCodable 래핑 불필요 - 45% 코드 감소
+TraceKit.info(
+    "사용자 로그인 성공",
+    category: "Auth",
+    ("userId", "user123"),
+    ("loginMethod", "OAuth")
+)
+
+// 비동기 버전
+await TraceKit.async.info(
+    "API 호출 성공",
+    category: "Network",
+    ("statusCode", 200),
+    ("url", "https://api.example.com"),
+    ("responseTime", 350.5)
+)
+```
+
+**기존 Dictionary API (하위 호환)**
 
 ```swift
 await TraceKit.async.info(
@@ -294,6 +331,36 @@ let project = Project(
 ⚠️ watchOS는 저장 공간이 제한적이므로 파일 로그 사용 시 retentionPolicy 설정 권장
 
 ## 버전 히스토리
+
+### 1.2.1 (2026-02-04)
+
+**개선사항**
+- ✨ Variadic Parameters를 사용한 Metadata API 추가
+  - `AnyCodable` 래핑 자동화로 45% 코드 감소
+  - 모든 로그 레벨 (verbose~fatal) 지원
+  - 100% 하위 호환성 유지
+- 📝 12개 신규 테스트 추가
+
+**Before & After**
+```swift
+// Before (기존 방식)
+TraceKit.info(
+    "API 호출",
+    category: "Network",
+    metadata: [
+        "statusCode": AnyCodable(200),
+        "url": AnyCodable("https://...")
+    ]
+)
+
+// After (v1.2.1+)
+TraceKit.info(
+    "API 호출",
+    category: "Network",
+    ("statusCode", 200),
+    ("url", "https://...")
+)
+```
 
 ### 1.2.0 (2026-01-27)
 
