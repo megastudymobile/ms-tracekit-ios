@@ -197,6 +197,10 @@ public final class TraceKitBuilder: @unchecked Sendable {
     public func buildAsShared() async -> TraceKit {
         let logger = await build()
         TraceKit.setShared(logger)
+
+        // PerformanceTracer를 TraceKit 로그 파이프라인에 연결
+        await logger.connectTracerToLogging()
+
         return logger
     }
 }

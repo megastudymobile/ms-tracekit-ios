@@ -81,13 +81,13 @@ public final class TraceKit {
     public func configure(_ newConfiguration: TraceKitConfiguration) {
         let oldConfiguration = configuration
         configuration = newConfiguration
-        
+
         // 샘플러 업데이트 (새 샘플링 비율로 재생성)
         if sampler != nil {
             let newPolicy = SamplingPolicy(defaultRate: newConfiguration.sampleRate)
             sampler = TraceSampler(policy: newPolicy)
         }
-        
+
         // 버퍼 정책 업데이트
         if let buffer = buffer {
             Task {
@@ -97,7 +97,7 @@ public final class TraceKit {
                 }
             }
         }
-        
+
         // 설정 변경 로깅
         Task { @TraceKitActor in
             await self.info(
@@ -109,7 +109,7 @@ public final class TraceKit {
                     "old_sample_rate": AnyCodable(oldConfiguration.sampleRate),
                     "new_sample_rate": AnyCodable(newConfiguration.sampleRate),
                     "old_sanitizer": AnyCodable(oldConfiguration.isSanitizingEnabled),
-                    "new_sanitizer": AnyCodable(newConfiguration.isSanitizingEnabled)
+                    "new_sanitizer": AnyCodable(newConfiguration.isSanitizingEnabled),
                 ]
             )
         }
@@ -157,6 +157,27 @@ public final class TraceKit {
     /// 크래시 보존기 설정
     public func setCrashPreserver(_ preserver: CrashTracePreserver) {
         crashPreserver = preserver
+    }
+
+    /// PerformanceTracer를 TraceKit 로그 파이프라인에 연결
+    ///
+    /// PerformanceTracer의 span 완료 로그가 TraceKit의 모든 Destination으로 전송되도록 합니다.
+    /// - Note: `TraceKitBuilder.buildAsShared()` 에서 자동으로 호출됩니다.
+    public func connectTracerToLogging() async {
+        await tracer.setLogHandler { [weak self] level, message, category, metadata in
+            guard let self = self else { return }
+
+            // PerformanceTracer의 로그를 TraceKit 파이프라인으로 전달
+            await self.log(
+                level: level,
+                message,
+                category: category,
+                metadata: metadata,
+                file: "PerformanceTracer.swift",
+                function: "endSpan(id:metadata:)",
+                line: 50
+            )
+        }
     }
 
     // MARK: - Logging Methods
@@ -352,9 +373,10 @@ public final class TraceKit {
     /// 측정 블록 실행
     public func measure<T: Sendable>(
         name: String,
+        parentId: UUID? = nil,
         operation: @Sendable () async throws -> T
     ) async rethrows -> T {
-        try await tracer.measure(name: name, operation: operation)
+        try await tracer.measure(name: name, parentId: parentId, operation: operation)
     }
 
     // MARK: - Crash Recovery
