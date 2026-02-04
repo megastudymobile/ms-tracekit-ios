@@ -72,26 +72,10 @@ struct PerformanceView: View {
                 ) {
                     Task { await viewModel.runHeavyOperationDemo() }
                 }
-                
-                Text("Firebase Performance")
-                    .font(Theme.Typography.caption)
-                    .foregroundColor(Theme.Colors.textTertiary)
-                    .textCase(.uppercase)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, Theme.Spacing.sm)
-                
+
                 PerformanceActionButton(
-                    title: "Firebase Performance 추적",
-                    subtitle: "FirebasePerformanceHelper 사용",
-                    icon: "flame.fill",
-                    isDisabled: viewModel.isRunning
-                ) {
-                    Task { await viewModel.runFirebasePerformanceDemo() }
-                }
-                
-                PerformanceActionButton(
-                    title: "TraceSpan → Firebase",
-                    subtitle: "TraceSpan을 Firebase Performance로 전송",
+                    title: "복합 Span 시연",
+                    subtitle: "Parent-Child 구조의 복잡한 워크플로우",
                     icon: "arrow.up.doc.on.clipboard",
                     isDisabled: viewModel.isRunning
                 ) {
