@@ -13,6 +13,7 @@ struct TraceKitIntegrationTests {
     // MARK: - PerformanceTracer Integration Tests
 
     @Test("TraceKit 빌더로 생성 시 PerformanceTracer가 로그 파이프라인에 연결됨")
+    @TraceKitActor
     func performanceTracerConnectedToLogPipeline() async {
         // Given
         var loggedMessages: [String] = []
@@ -43,6 +44,7 @@ struct TraceKitIntegrationTests {
     }
 
     @Test("buildAsShared()로 생성 시 자동으로 tracer 연결됨")
+    @TraceKitActor
     func buildAsSharedAutoConnectsTracer() async {
         // Given
         var loggedMessages: [String] = []
@@ -69,6 +71,7 @@ struct TraceKitIntegrationTests {
     }
 
     @Test("measure() 메서드도 로그 파이프라인으로 전송됨")
+    @TraceKitActor
     func measureSendsToLogPipeline() async {
         // Given
         var loggedMessages: [String] = []
@@ -97,6 +100,7 @@ struct TraceKitIntegrationTests {
     }
 
     @Test("카테고리가 Performance로 설정됨")
+    @TraceKitActor
     func tracerLogsHavePerformanceCategory() async {
         // Given
         var loggedCategories: [String] = []
@@ -119,6 +123,7 @@ struct TraceKitIntegrationTests {
     }
 
     @Test("부모-자식 span의 들여쓰기가 올바르게 표시됨")
+    @TraceKitActor
     func parentChildSpanIndentation() async {
         // Given
         var loggedMessages: [String] = []
@@ -156,15 +161,20 @@ struct TraceKitIntegrationTests {
 // MARK: - Test Helpers
 
 /// 테스트용 인메모리 Destination
-@TraceKitActor
-private final class InMemoryTestDestination: TraceDestination {
+private actor InMemoryTestDestination: TraceDestination {
     let identifier: String = "InMemoryTestDestination"
+    var minLevel: TraceLevel = .verbose
+    var isEnabled: Bool = true
     private let onMessage: (TraceMessage) -> Void
-
+    
     init(onMessage: @escaping (TraceMessage) -> Void) {
         self.onMessage = onMessage
     }
-
+    
+    func log(_ message: TraceMessage) async {
+        onMessage(message)
+    }
+    
     func flush(_ messages: [TraceMessage]) async {
         for message in messages {
             onMessage(message)
