@@ -3,9 +3,9 @@
 //
 // Created by jimmy on 2026-01-22.
 
+import FirebaseRemoteConfig
 import Foundation
 import TraceKit
-import FirebaseRemoteConfig
 
 /// Firebase Remote Config를 사용한 TraceKit 동적 설정 관리
 ///
@@ -30,30 +30,30 @@ actor FirebaseRemoteConfigManager {
     private let remoteConfig: RemoteConfig
     private let fetchInterval: TimeInterval = 3600 // 1시간
     private var configUpdateListenerRegistration: ConfigUpdateListenerRegistration?
-    
+
     init() {
         remoteConfig = RemoteConfig.remoteConfig()
-        
+
         let settings = RemoteConfigSettings()
         settings.minimumFetchInterval = fetchInterval
         remoteConfig.configSettings = settings
-        
+
         let defaults: [String: NSObject] = [
-            "tracekit_min_level": "info" as NSObject,
+            "tracekit_min_level": "debug" as NSObject, // 데모 앱에서는 debug 레벨부터 출력
             "tracekit_sampling_rate": 1.0 as NSObject,
             "tracekit_enable_crashlytics": true as NSObject,
             "tracekit_enable_analytics": true as NSObject,
             "tracekit_enable_performance": true as NSObject,
-            "tracekit_enable_sanitizer": true as NSObject
+            "tracekit_enable_sanitizer": true as NSObject,
         ]
-        
+
         remoteConfig.setDefaults(defaults)
     }
-    
+
     deinit {
         configUpdateListenerRegistration?.remove()
     }
-    
+
     /// Remote Config 값 가져오기 및 활성화
     ///
     /// 서버에서 최신 설정을 가져와 활성화합니다.
@@ -66,7 +66,7 @@ actor FirebaseRemoteConfigManager {
         do {
             let status = try await remoteConfig.fetchAndActivate()
             let success = status == .successFetchedFromRemote || status == .successUsingPreFetchedData
-            
+
             if success {
                 if status == .successFetchedFromRemote {
                     print("✅ [Remote Config] 설정 가져오기 성공 (서버에서 최신)")
@@ -76,14 +76,14 @@ actor FirebaseRemoteConfigManager {
             } else {
                 print("⚠️ [Remote Config] 변경사항 없음")
             }
-            
+
             return success
         } catch {
             print("❌ [Remote Config] 설정 가져오기 실패: \(error)")
             return false
         }
     }
-    
+
     /// Remote Config 값 즉시 가져오기 및 활성화
     ///
     /// minimumFetchInterval을 무시하고 서버에서 즉시 최신 설정을 가져옵니다.
@@ -96,7 +96,7 @@ actor FirebaseRemoteConfigManager {
             // fetch(withExpirationDuration: 0)으로 캐시를 무시하고 즉시 가져옴
             try await remoteConfig.fetch(withExpirationDuration: 0)
             try await remoteConfig.activate()
-            
+
             print("✅ [Remote Config] 즉시 가져오기 성공 (캐시 무시)")
             return true
         } catch {
@@ -104,7 +104,7 @@ actor FirebaseRemoteConfigManager {
             return false
         }
     }
-    
+
     /// 실시간 Remote Config 업데이트 리스너 시작
     ///
     /// Firebase Console에서 설정을 변경하면 자동으로 알림을 받아 TraceKit에 즉시 적용합니다.
@@ -114,28 +114,28 @@ actor FirebaseRemoteConfigManager {
     func startRealtimeUpdates(onChange: (@Sendable () async -> Void)? = nil) {
         configUpdateListenerRegistration = remoteConfig.addOnConfigUpdateListener { [weak self] configUpdate, error in
             guard let self = self else { return }
-            
+
             if let error = error {
                 print("❌ [Remote Config] 실시간 업데이트 오류: \(error)")
                 return
             }
-            
+
             guard let configUpdate = configUpdate else {
                 print("⚠️ [Remote Config] 업데이트 정보 없음")
                 return
             }
-            
+
             print("🔔 [Remote Config] 설정 변경 감지 - 업데이트된 키: \(configUpdate.updatedKeys)")
-            
+
             Task {
                 // 변경된 설정 활성화
                 do {
                     try await self.remoteConfig.activate()
                     print("✅ [Remote Config] 변경된 설정 활성화 완료")
-                    
+
                     // TraceKit에 자동 적용
                     await self.applyToTraceKit()
-                    
+
                     // UI 업데이트를 위한 Notification 발송
                     await MainActor.run {
                         NotificationCenter.default.post(
@@ -144,7 +144,7 @@ actor FirebaseRemoteConfigManager {
                             userInfo: ["updatedKeys": configUpdate.updatedKeys]
                         )
                     }
-                    
+
                     // 콜백 실행
                     await onChange?()
                 } catch {
@@ -152,36 +152,36 @@ actor FirebaseRemoteConfigManager {
                 }
             }
         }
-        
+
         print("👂 [Remote Config] 실시간 업데이트 리스너 시작")
     }
-    
+
     /// 실시간 업데이트 리스너 중지
     func stopRealtimeUpdates() {
         configUpdateListenerRegistration?.remove()
         configUpdateListenerRegistration = nil
         print("🛑 [Remote Config] 실시간 업데이트 리스너 중지")
     }
-    
+
     /// Remote Config 설정을 TraceKit에 적용
     ///
     /// Remote Config의 값을 읽어 TraceKit 동작을 동적으로 변경합니다.
     func applyToTraceKit() async {
         let config = buildTraceKitConfiguration()
-        
+
         // TraceKit 런타임 설정 업데이트
         await TraceKit.async.configure(config)
-        
+
         print("✅ [Remote Config] TraceKit 설정 적용 완료")
         printCurrentConfiguration()
     }
-    
+
     /// Remote Config 값으로 TraceKitConfiguration 생성
     private func buildTraceKitConfiguration() -> TraceKitConfiguration {
         let minLevel = minimumTraceLevel
         let samplingRate = self.samplingRate
-        let sanitizerEnabled = self.isSanitizerEnabled
-        
+        let sanitizerEnabled = isSanitizerEnabled
+
         return TraceKitConfiguration(
             minLevel: minLevel,
             isSanitizingEnabled: sanitizerEnabled,
@@ -189,39 +189,39 @@ actor FirebaseRemoteConfigManager {
             bufferSize: 1000
         )
     }
-    
+
     /// 최소 로그 레벨
     var minimumTraceLevel: TraceLevel {
         let levelString = remoteConfig["tracekit_min_level"].stringValue
         return parseTraceLevel(levelString)
     }
-    
+
     /// 샘플링 비율 (0.0 ~ 1.0)
     var samplingRate: Double {
         let rate = remoteConfig["tracekit_sampling_rate"].numberValue.doubleValue
         return max(0.0, min(1.0, rate))
     }
-    
+
     /// Crashlytics 연동 활성화 여부
     var isCrashlyticsEnabled: Bool {
         remoteConfig["tracekit_enable_crashlytics"].boolValue
     }
-    
+
     /// Analytics 연동 활성화 여부
     var isAnalyticsEnabled: Bool {
         remoteConfig["tracekit_enable_analytics"].boolValue
     }
-    
+
     /// Performance 연동 활성화 여부
     var isPerformanceEnabled: Bool {
         remoteConfig["tracekit_enable_performance"].boolValue
     }
-    
+
     /// 민감정보 마스킹 활성화 여부
     var isSanitizerEnabled: Bool {
         remoteConfig["tracekit_enable_sanitizer"].boolValue
     }
-    
+
     /// 문자열을 TraceLevel로 파싱
     private func parseTraceLevel(_ string: String) -> TraceLevel {
         switch string.lowercased() {
@@ -234,7 +234,7 @@ actor FirebaseRemoteConfigManager {
         default: return .info
         }
     }
-    
+
     /// 현재 적용된 설정 출력
     private func printCurrentConfiguration() {
         print("""

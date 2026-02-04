@@ -3,12 +3,12 @@
 //
 // Created by jimmy on 2025-12-15.
 
-import Foundation
-import TraceKit
+import FirebaseAnalytics
 import FirebaseCore
 import FirebaseCrashlytics
-import FirebaseAnalytics
 import FirebaseRemoteConfig
+import Foundation
+import TraceKit
 
 /// TraceKit 초기화 설정
 ///
@@ -37,11 +37,13 @@ import FirebaseRemoteConfig
 /// | InMemory | TraceViewer 화면에서 실시간 로그 확인 |
 /// | Crashlytics | Firebase Crashlytics Breadcrumb 및 에러 리포트 |
 /// | Analytics | Firebase Analytics 이벤트 전송 (에러 패턴 분석) |
+/// | Performance | Firebase Performance Monitoring (성능 추적 자동 전송) |
 /// | CrashTracePreserver | 크래시 직전 로그 보존 및 복구 |
 ///
 /// ## Firebase 통합
 /// - **Crashlytics**: 크래시 발생 시 TraceKit 로그 컨텍스트 첨부
 /// - **Analytics**: 에러/크리티컬 로그를 이벤트로 전송하여 패턴 분석
+/// - **Performance**: PerformanceTracer span을 자동으로 Firebase Trace로 전송
 /// - **Remote Config**: 앱 업데이트 없이 로그 레벨, 샘플링 비율 등 동적 제어
 ///
 /// ## 로그 파일 위치
@@ -51,7 +53,7 @@ import FirebaseRemoteConfig
 enum TraceKitSetup {
     /// 공유 CrashTracePreserver 인스턴스
     static let crashPreserver = CrashTracePreserver(preserveCount: 100)
-    
+
     /// Remote Config 관리자
     static let remoteConfigManager = FirebaseRemoteConfigManager()
 
@@ -65,23 +67,25 @@ enum TraceKitSetup {
     static func configure() async {
         // Firebase 초기화
         configureFirebase()
-        
+
         // Remote Config 가져오기
         await remoteConfigManager.fetchAndActivate()
-        
+
         // 이전 크래시 확인
         await checkPreviousCrash()
 
         let stream = TraceStream.shared
         let inMemoryDestination = InMemoryTraceDestination(stream: stream)
-        
+
         // Firebase Destinations
         let crashlyticsDestination = FirebaseCrashlyticsTraceDestination()
         let analyticsDestination = FirebaseAnalyticsTraceDestination()
+        let performanceDestination = FirebasePerformanceTraceDestination()
 
         _ = await TraceKitBuilder()
             .addOSLog(
                 subsystem: "com.tracekit.TraceKitDemo",
+                minLevel: .debug, // DEBUG 레벨부터 출력
                 formatter: PrettyTraceFormatter.verbose
             )
             .addFile(
@@ -91,13 +95,14 @@ enum TraceKitSetup {
             .addDestination(inMemoryDestination)
             .addDestination(crashlyticsDestination)
             .addDestination(analyticsDestination)
+            .addDestination(performanceDestination)
             .with(configuration: .debug)
             .withDefaultSanitizer()
             .buildAsShared()
-        
+
         // Remote Config 설정 적용
         await remoteConfigManager.applyToTraceKit()
-        
+
         // Remote Config 실시간 업데이트 활성화
         await remoteConfigManager.startRealtimeUpdates()
         print("✅ [Remote Config] 실시간 업데이트 활성화")
@@ -105,7 +110,7 @@ enum TraceKitSetup {
         // Signal Handler 등록 (전역 mmap 포인터 사용)
         // registerSignalHandlers()
     }
-    
+
     /// Firebase 초기화
     ///
     /// GoogleService-Info.plist를 사용하여 Firebase를 구성합니다.
@@ -114,7 +119,7 @@ enum TraceKitSetup {
     private static func configureFirebase() {
         FirebaseApp.configure()
         print("✅ [Firebase] 초기화 완료")
-        
+
         // Crashlytics 활성화
         Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
         print("✅ [Firebase Crashlytics] 활성화")
