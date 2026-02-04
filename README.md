@@ -99,7 +99,7 @@ TraceKitDemo에서 Firebase 4대 서비스와의 통합 구현을 제공합니�
 
 - `FirebaseAnalyticsTraceDestination` - Analytics 이벤트 전송
 - `FirebaseCrashlyticsTraceDestination` - Crashlytics 연동
-- `FirebasePerformanceTraceExtension` - Performance 모니터링
+- `FirebasePerformanceTraceDestination` - Performance 모니터링
 - `FirebaseRemoteConfigManager` - 원격 설정 관리
 
 자세한 사용법은 [Firebase 통합 가이드](./Projects/TraceKitDemo/FIREBASE_MODULES_GUIDE.md)를 참고하세요.
@@ -138,10 +138,10 @@ await TraceKit.async.endSpan(id: spanId)
 ```swift
 // 자동으로 마스킹됨
 await TraceKit.async.info("사용자 이메일: john@example.com")
-// 출력: "사용자 이메일: [EMAIL]"
+// 출력: "사용자 이메일: [EMAIL_REDACTED]"
 
 await TraceKit.async.info("카드번호: 1234-5678-9012-3456")
-// 출력: "카드번호: [CREDIT_CARD]"
+// 출력: "카드번호: [CARD_REDACTED]"
 ```
 
 ### 크래시 로그 보존
@@ -207,7 +207,7 @@ Xcode에서 다음 launch argument로 로거를 제어할 수 있습니다:
 1. Xcode에서 File > Add Package Dependencies...
 2. 다음 URL 입력:
 ```
-https://github.com/Jimmy-Jung/TraceKit
+https://github.com/megastudymobile/ms-tracekit-ios
 ```
 3. 버전 규칙 선택 (예: "Up to Next Major Version" - 1.2.0)
 4. 필요한 패키지 선택:
@@ -218,7 +218,7 @@ https://github.com/Jimmy-Jung/TraceKit
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/Jimmy-Jung/TraceKit", from: "1.2.0")
+    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.2.0")
 ],
 targets: [
     .target(
@@ -235,7 +235,7 @@ targets: [
 ```swift
 // Package.swift (Tuist 의존성)
 dependencies: [
-    .package(url: "https://github.com/Jimmy-Jung/TraceKit", from: "1.2.0")
+    .package(url: "https://github.com/megastudymobile/ms-tracekit-ios", from: "1.2.0")
 ]
 
 // Project.swift
