@@ -173,4 +173,105 @@ struct PerformanceTracerTests {
         let count = await tracer.activeSpanCount
         #expect(count == 2)
     }
+
+    // MARK: - Log Handler Tests
+
+    @Test("logHandler 설정 후 span 종료 시 로그 호출")
+    func logHandlerCalledOnEndSpan() async {
+        // Given
+        let tracer = PerformanceTracer()
+        var loggedMessage: String?
+        var loggedCategory: String?
+        var loggedLevel: TraceLevel?
+
+        await tracer.setLogHandler { level, message, category, _ in
+            loggedLevel = level
+            loggedMessage = message
+            loggedCategory = category
+        }
+
+        // When
+        let spanId = await tracer.startSpan(name: "test_span")
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        _ = await tracer.endSpan(id: spanId)
+
+        // Then
+        #expect(loggedLevel == .debug)
+        #expect(loggedMessage?.contains("test_span") == true)
+        #expect(loggedMessage?.contains("completed") == true)
+        #expect(loggedCategory == "Performance")
+    }
+
+    @Test("자식 span 종료 시 들여쓰기 포함")
+    func childSpanHasIndentation() async {
+        // Given
+        let tracer = PerformanceTracer()
+        var loggedMessage: String?
+
+        await tracer.setLogHandler { _, message, _, _ in
+            loggedMessage = message
+        }
+
+        // When
+        let parentId = await tracer.startSpan(name: "parent")
+        let childId = await tracer.startSpan(name: "child", parentId: parentId)
+        _ = await tracer.endSpan(id: childId)
+
+        // Then
+        #expect(loggedMessage?.contains("└") == true)
+        #expect(loggedMessage?.contains("child") == true)
+    }
+
+    @Test("부모 span 종료 시 시작 표시")
+    func parentSpanHasStartIndicator() async {
+        // Given
+        let tracer = PerformanceTracer()
+        var loggedMessage: String?
+
+        await tracer.setLogHandler { _, message, _, _ in
+            loggedMessage = message
+        }
+
+        // When
+        let parentId = await tracer.startSpan(name: "parent")
+        _ = await tracer.endSpan(id: parentId)
+
+        // Then
+        #expect(loggedMessage?.hasPrefix("▶ ") == true)
+        #expect(loggedMessage?.contains("parent") == true)
+    }
+
+    @Test("logHandler 없이 span 종료 시 정상 동작")
+    func endSpanWithoutLogHandler() async {
+        // Given
+        let tracer = PerformanceTracer()
+
+        // When
+        let spanId = await tracer.startSpan(name: "test")
+        let result = await tracer.endSpan(id: spanId)
+
+        // Then
+        #expect(result != nil)
+        #expect(result?.name == "test")
+    }
+
+    @Test("logHandler를 나중에 설정해도 동작")
+    func setLogHandlerAfterInit() async {
+        // Given
+        let tracer = PerformanceTracer()
+        let spanId = await tracer.startSpan(name: "before_handler")
+        _ = await tracer.endSpan(id: spanId) // 로그 없음
+
+        var callCount = 0
+        await tracer.setLogHandler { _, _, _, _ in
+            callCount += 1
+        }
+
+        // When
+        let spanId2 = await tracer.startSpan(name: "after_handler")
+        _ = await tracer.endSpan(id: spanId2)
+
+        // Then
+        #expect(callCount == 1)
+    }
 }
