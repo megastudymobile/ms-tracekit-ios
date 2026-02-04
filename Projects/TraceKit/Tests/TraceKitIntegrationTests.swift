@@ -16,10 +16,7 @@ struct TraceKitIntegrationTests {
     @TraceKitActor
     func performanceTracerConnectedToLogPipeline() async {
         // Given
-        var loggedMessages: [String] = []
-        let destination = InMemoryTestDestination { message in
-            loggedMessages.append(message.message)
-        }
+        let destination = InMemoryTestDestination()
 
         let traceKit = await TraceKitBuilder()
             .addDestination(destination)
@@ -39,6 +36,8 @@ struct TraceKitIntegrationTests {
         await traceKit.flush()
 
         // Then
+        let messages = await destination.getMessages()
+        let loggedMessages = messages.map { $0.message }
         #expect(loggedMessages.count > 0)
         #expect(loggedMessages.contains { $0.contains("test_operation") && $0.contains("completed") })
     }
@@ -47,25 +46,24 @@ struct TraceKitIntegrationTests {
     @TraceKitActor
     func buildAsSharedAutoConnectsTracer() async {
         // Given
-        var loggedMessages: [String] = []
-        let destination = InMemoryTestDestination { message in
-            loggedMessages.append(message.message)
-        }
+        let destination = InMemoryTestDestination()
 
-        _ = await TraceKitBuilder()
+        let traceKit = await TraceKitBuilder()
             .addDestination(destination)
             .with(configuration: .debug)
             .buildAsShared()
 
         // When
-        let spanId = await TraceKit.async.tracer.startSpan(name: "auto_connected_span")
+        let spanId = await traceKit.tracer.startSpan(name: "auto_connected_span")
         try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
-        _ = await TraceKit.async.tracer.endSpan(id: spanId)
+        _ = await traceKit.tracer.endSpan(id: spanId)
 
         // 버퍼 플러시
-        await TraceKit.async.flush()
+        await traceKit.flush()
 
         // Then
+        let messages = await destination.getMessages()
+        let loggedMessages = messages.map { $0.message }
         #expect(loggedMessages.count > 0)
         #expect(loggedMessages.contains { $0.contains("auto_connected_span") && $0.contains("completed") })
     }
@@ -74,26 +72,25 @@ struct TraceKitIntegrationTests {
     @TraceKitActor
     func measureSendsToLogPipeline() async {
         // Given
-        var loggedMessages: [String] = []
-        let destination = InMemoryTestDestination { message in
-            loggedMessages.append(message.message)
-        }
+        let destination = InMemoryTestDestination()
 
-        _ = await TraceKitBuilder()
+        let traceKit = await TraceKitBuilder()
             .addDestination(destination)
             .with(configuration: .debug)
             .buildAsShared()
 
         // When
-        let result = await TraceKit.async.measure(name: "compute_task") {
+        let result = await traceKit.measure(name: "compute_task") {
             try? await Task.sleep(nanoseconds: 5_000_000)
             return 42
         }
 
         // 버퍼 플러시
-        await TraceKit.async.flush()
+        await traceKit.flush()
 
         // Then
+        let messages = await destination.getMessages()
+        let loggedMessages = messages.map { $0.message }
         #expect(result == 42)
         #expect(loggedMessages.count > 0)
         #expect(loggedMessages.contains { $0.contains("compute_task") && $0.contains("completed") })
@@ -103,22 +100,21 @@ struct TraceKitIntegrationTests {
     @TraceKitActor
     func tracerLogsHavePerformanceCategory() async {
         // Given
-        var loggedCategories: [String] = []
-        let destination = InMemoryTestDestination { message in
-            loggedCategories.append(message.category)
-        }
+        let destination = InMemoryTestDestination()
 
-        _ = await TraceKitBuilder()
+        let traceKit = await TraceKitBuilder()
             .addDestination(destination)
             .with(configuration: .debug)
             .buildAsShared()
 
         // When
-        let spanId = await TraceKit.async.tracer.startSpan(name: "test")
-        _ = await TraceKit.async.tracer.endSpan(id: spanId)
-        await TraceKit.async.flush()
+        let spanId = await traceKit.tracer.startSpan(name: "test")
+        _ = await traceKit.tracer.endSpan(id: spanId)
+        await traceKit.flush()
 
         // Then
+        let messages = await destination.getMessages()
+        let loggedCategories = messages.map { $0.category }
         #expect(loggedCategories.contains("Performance"))
     }
 
@@ -126,26 +122,25 @@ struct TraceKitIntegrationTests {
     @TraceKitActor
     func parentChildSpanIndentation() async {
         // Given
-        var loggedMessages: [String] = []
-        let destination = InMemoryTestDestination { message in
-            loggedMessages.append(message.message)
-        }
+        let destination = InMemoryTestDestination()
 
-        _ = await TraceKitBuilder()
+        let traceKit = await TraceKitBuilder()
             .addDestination(destination)
             .with(configuration: .debug)
             .buildAsShared()
 
         // When
-        let parentId = await TraceKit.async.tracer.startSpan(name: "parent_operation")
-        let childId = await TraceKit.async.tracer.startSpan(name: "child_operation", parentId: parentId)
+        let parentId = await traceKit.tracer.startSpan(name: "parent_operation")
+        let childId = await traceKit.tracer.startSpan(name: "child_operation", parentId: parentId)
 
-        _ = await TraceKit.async.tracer.endSpan(id: childId)
-        _ = await TraceKit.async.tracer.endSpan(id: parentId)
+        _ = await traceKit.tracer.endSpan(id: childId)
+        _ = await traceKit.tracer.endSpan(id: parentId)
 
-        await TraceKit.async.flush()
+        await traceKit.flush()
 
         // Then
+        let messages = await destination.getMessages()
+        let loggedMessages = messages.map { $0.message }
         #expect(loggedMessages.count == 2)
 
         // 자식 span은 들여쓰기 포함
@@ -165,19 +160,25 @@ private actor InMemoryTestDestination: TraceDestination {
     let identifier: String = "InMemoryTestDestination"
     var minLevel: TraceLevel = .verbose
     var isEnabled: Bool = true
-    private let onMessage: (TraceMessage) -> Void
-    
-    init(onMessage: @escaping (TraceMessage) -> Void) {
-        self.onMessage = onMessage
-    }
-    
+    private var messages: [TraceMessage] = []
+
+    init() {}
+
     func log(_ message: TraceMessage) async {
-        onMessage(message)
+        messages.append(message)
     }
-    
+
     func flush(_ messages: [TraceMessage]) async {
-        for message in messages {
-            onMessage(message)
-        }
+        self.messages.append(contentsOf: messages)
+    }
+
+    /// 저장된 메시지 목록 반환
+    func getMessages() -> [TraceMessage] {
+        return messages
+    }
+
+    /// 메시지 초기화
+    func clearMessages() {
+        messages.removeAll()
     }
 }

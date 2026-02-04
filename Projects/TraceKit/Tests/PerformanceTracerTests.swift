@@ -7,6 +7,49 @@ import Foundation
 import Testing
 @testable import TraceKit
 
+// MARK: - Test Helpers
+
+/// 로그 메시지 데이터
+private struct LogMessage {
+    let level: TraceLevel
+    let message: String
+    let category: String
+    let metadata: [String: AnyCodable]
+}
+
+/// 테스트용 로그 수집기 (동시성 안전)
+private actor LogCollector {
+    var messages: [LogMessage] = []
+
+    func record(level: TraceLevel, message: String, category: String, metadata: [String: AnyCodable]) {
+        messages.append(LogMessage(level: level, message: message, category: category, metadata: metadata))
+    }
+
+    func getMessages() -> [LogMessage] {
+        return messages
+    }
+
+    func getLastMessage() -> String? {
+        return messages.last?.message
+    }
+
+    func getLastLevel() -> TraceLevel? {
+        return messages.last?.level
+    }
+
+    func getLastCategory() -> String? {
+        return messages.last?.category
+    }
+
+    func getCallCount() -> Int {
+        return messages.count
+    }
+
+    func reset() {
+        messages.removeAll()
+    }
+}
+
 // MARK: - PerformanceTracer Tests
 
 struct PerformanceTracerTests {
@@ -180,14 +223,10 @@ struct PerformanceTracerTests {
     func logHandlerCalledOnEndSpan() async {
         // Given
         let tracer = PerformanceTracer()
-        var loggedMessage: String?
-        var loggedCategory: String?
-        var loggedLevel: TraceLevel?
+        let collector = LogCollector()
 
-        await tracer.setLogHandler { level, message, category, _ in
-            loggedLevel = level
-            loggedMessage = message
-            loggedCategory = category
+        await tracer.setLogHandler { level, message, category, metadata in
+            await collector.record(level: level, message: message, category: category, metadata: metadata)
         }
 
         // When
@@ -196,6 +235,10 @@ struct PerformanceTracerTests {
         _ = await tracer.endSpan(id: spanId)
 
         // Then
+        let loggedLevel = await collector.getLastLevel()
+        let loggedMessage = await collector.getLastMessage()
+        let loggedCategory = await collector.getLastCategory()
+
         #expect(loggedLevel == .debug)
         #expect(loggedMessage?.contains("test_span") == true)
         #expect(loggedMessage?.contains("completed") == true)
@@ -206,30 +249,37 @@ struct PerformanceTracerTests {
     func childSpanHasIndentation() async {
         // Given
         let tracer = PerformanceTracer()
-        var loggedMessage: String?
+        let collector = LogCollector()
 
-        await tracer.setLogHandler { _, message, _, _ in
-            loggedMessage = message
+        await tracer.setLogHandler { level, message, category, metadata in
+            await collector.record(level: level, message: message, category: category, metadata: metadata)
         }
 
         // When
         let parentId = await tracer.startSpan(name: "parent")
         let childId = await tracer.startSpan(name: "child", parentId: parentId)
         _ = await tracer.endSpan(id: childId)
+        _ = await tracer.endSpan(id: parentId) // 부모 종료 시 자식 로그도 함께 출력됨
 
         // Then
-        #expect(loggedMessage?.contains("└") == true)
-        #expect(loggedMessage?.contains("child") == true)
+        let messages = await collector.getMessages()
+        #expect(messages.count == 2, "부모와 자식 메시지가 있어야 함")
+
+        // 자식 메시지는 두 번째 메시지
+        let childMessage = messages.last
+        #expect(childMessage != nil, "child span 메시지가 있어야 함")
+        #expect(childMessage?.message.contains("└") == true)
+        #expect(childMessage?.message.contains("child") == true)
     }
 
     @Test("부모 span 종료 시 시작 표시")
     func parentSpanHasStartIndicator() async {
         // Given
         let tracer = PerformanceTracer()
-        var loggedMessage: String?
+        let collector = LogCollector()
 
-        await tracer.setLogHandler { _, message, _, _ in
-            loggedMessage = message
+        await tracer.setLogHandler { level, message, category, metadata in
+            await collector.record(level: level, message: message, category: category, metadata: metadata)
         }
 
         // When
@@ -237,6 +287,7 @@ struct PerformanceTracerTests {
         _ = await tracer.endSpan(id: parentId)
 
         // Then
+        let loggedMessage = await collector.getLastMessage()
         #expect(loggedMessage?.hasPrefix("▶ ") == true)
         #expect(loggedMessage?.contains("parent") == true)
     }
@@ -262,9 +313,9 @@ struct PerformanceTracerTests {
         let spanId = await tracer.startSpan(name: "before_handler")
         _ = await tracer.endSpan(id: spanId) // 로그 없음
 
-        var callCount = 0
-        await tracer.setLogHandler { _, _, _, _ in
-            callCount += 1
+        let collector = LogCollector()
+        await tracer.setLogHandler { level, message, category, metadata in
+            await collector.record(level: level, message: message, category: category, metadata: metadata)
         }
 
         // When
@@ -272,6 +323,7 @@ struct PerformanceTracerTests {
         _ = await tracer.endSpan(id: spanId2)
 
         // Then
+        let callCount = await collector.getCallCount()
         #expect(callCount == 1)
     }
 }

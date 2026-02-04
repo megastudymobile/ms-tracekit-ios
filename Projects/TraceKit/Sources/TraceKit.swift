@@ -164,11 +164,13 @@ public final class TraceKit {
     /// PerformanceTracer의 span 완료 로그가 TraceKit의 모든 Destination으로 전송되도록 합니다.
     /// - Note: `TraceKitBuilder.buildAsShared()` 에서 자동으로 호출됩니다.
     public func connectTracerToLogging() async {
-        await tracer.setLogHandler { [weak self] level, message, category, metadata in
-            guard let self = self else { return }
+        // nonisolated context에서 self를 캡처하기 위해 먼저 참조를 저장
+        let traceKitInstance = self
 
+        await tracer.setLogHandler { level, message, category, metadata in
             // PerformanceTracer의 로그를 TraceKit 파이프라인으로 전달
-            await self.log(
+            // 특정 TraceKit 인스턴스에 연결 (shared 아님)
+            await traceKitInstance.log(
                 level: level,
                 message,
                 category: category,
