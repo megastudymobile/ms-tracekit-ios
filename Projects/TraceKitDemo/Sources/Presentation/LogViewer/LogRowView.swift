@@ -115,7 +115,7 @@ struct DetailRow: View {
             level: .error,
             message: "네트워크 요청 실패: Connection timeout",
             category: "Network",
-            metadata: ["statusCode": AnyCodable(500), "url": AnyCodable("/api/users")],
+            metadata: ["statusCode": AnyCodable(500), "url": AnyCodable("/api/users")],  // Preview: 기존 API 사용
             file: "APIClient.swift",
             function: "request()",
             line: 128

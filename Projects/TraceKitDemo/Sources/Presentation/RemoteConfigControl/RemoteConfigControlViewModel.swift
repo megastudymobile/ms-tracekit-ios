@@ -179,10 +179,8 @@ final class RemoteConfigControlViewModel: ObservableObject {
         TraceKit.info(
             "긴급 디버깅 모드 시나리오",
             category: "RemoteConfig",
-            metadata: [
-                "scenario": AnyCodable("emergency_debug"),
-                "action": AnyCodable("Firebase Console에서 tracekit_min_level을 'verbose'로 변경하세요")
-            ]
+            ("scenario", "emergency_debug"),
+            ("action", "Firebase Console에서 tracekit_min_level을 'verbose'로 변경하세요")
         )
     }
     
@@ -191,10 +189,8 @@ final class RemoteConfigControlViewModel: ObservableObject {
         TraceKit.info(
             "A/B 테스트 시나리오",
             category: "RemoteConfig",
-            metadata: [
-                "scenario": AnyCodable("ab_test"),
-                "action": AnyCodable("Firebase Console에서 조건부 값을 설정하세요")
-            ]
+            ("scenario", "ab_test"),
+            ("action", "Firebase Console에서 조건부 값을 설정하세요")
         )
     }
     

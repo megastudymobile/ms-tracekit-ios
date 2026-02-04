@@ -43,12 +43,10 @@ final class AnalyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.error(
             message,
             category: "Network",
-            metadata: [
-                "endpoint": AnyCodable("/api/v1/users/profile"),
-                "method": AnyCodable("GET"),
-                "timeout": AnyCodable(30.0),
-                "retryCount": AnyCodable(3)
-            ]
+            ("endpoint", "/api/v1/users/profile"),
+            ("method", "GET"),
+            ("timeout", 30.0),
+            ("retryCount", 3)
         )
         
         addEventToHistory(
@@ -66,12 +64,10 @@ final class AnalyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.error(
             message,
             category: "Payment",
-            metadata: [
-                "orderId": AnyCodable("ORD-2026-001234"),
-                "amount": AnyCodable(59800),
-                "paymentMethod": AnyCodable("card"),
-                "errorCode": AnyCodable("GATEWAY_TIMEOUT")
-            ]
+            ("orderId", "ORD-2026-001234"),
+            ("amount", 59800),
+            ("paymentMethod", "card"),
+            ("errorCode", "GATEWAY_TIMEOUT")
         )
         
         addEventToHistory(
@@ -89,11 +85,9 @@ final class AnalyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.fatal(
             message,
             category: "Database",
-            metadata: [
-                "connectionPool": AnyCodable("main"),
-                "activeConnections": AnyCodable(0),
-                "lastHeartbeat": AnyCodable(Date().timeIntervalSince1970 - 120)
-            ]
+            ("connectionPool", "main"),
+            ("activeConnections", 0),
+            ("lastHeartbeat", Date().timeIntervalSince1970 - 120)
         )
         
         addEventToHistory(
@@ -111,11 +105,9 @@ final class AnalyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.error(
             message,
             category: "Auth",
-            metadata: [
-                "tokenType": AnyCodable("refresh_token"),
-                "reason": AnyCodable("server_unreachable"),
-                "willRetry": AnyCodable(true)
-            ]
+            ("tokenType", "refresh_token"),
+            ("reason", "server_unreachable"),
+            ("willRetry", true)
         )
         
         addEventToHistory(
@@ -157,10 +149,8 @@ final class AnalyticsRealtimeDemoViewModel: ObservableObject {
         TraceKit.info(
             "User Context updated",
             category: "Analytics",
-            metadata: [
-                "userId": AnyCodable(userId),
-                "plan": AnyCodable(userPlan)
-            ]
+            ("userId", userId),
+            ("plan", userPlan)
         )
     }
     

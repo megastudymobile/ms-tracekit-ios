@@ -5,7 +5,6 @@
 
 import Foundation
 import TraceKit
-import FirebasePerformance
 
 @MainActor
 final class PerformanceViewModel: ObservableObject {
@@ -26,13 +25,14 @@ final class PerformanceViewModel: ObservableObject {
         isRunning = true
         currentOperation = "measure() 시연 중..."
 
-        let spanId = await TraceKit.async.tracer.startSpan(name: "데이터 로딩 시뮬레이션")
+        let startTime = Date()
 
-        await simulateNetworkRequest(delay: 1.5)
+        // measure() API 사용 - 자동으로 span 시작/종료 및 Firebase 전송
+        _ = await TraceKit.async.measure(name: "데이터_로딩_시뮬레이션") {
+            await simulateNetworkRequest(delay: 1.5)
+        }
 
-        let completedSpan = await TraceKit.async.tracer.endSpan(id: spanId)
-
-        let duration = completedSpan?.durationMs.map { $0 / 1000.0 } ?? 1.5
+        let duration = Date().timeIntervalSince(startTime)
         let result = MeasurementResult(
             name: "데이터 로딩 시뮬레이션",
             duration: duration,
@@ -116,15 +116,21 @@ final class PerformanceViewModel: ObservableObject {
 
         TraceKit.info("무거운 작업 시작", category: "Performance")
 
-        // Simulate heavy computation
+        // 전체 작업을 span으로 감싸기
+        let parentSpanId = await TraceKit.async.startSpan(name: "병렬_작업_전체")
+
+        // 각 서브태스크도 span으로 추적 (부모 span 연결)
         await withTaskGroup(of: Void.self) { group in
             for i in 1 ... 5 {
                 group.addTask {
-                    await self.simulateProcessing(delay: 0.3)
-                    TraceKit.debug("서브태스크 \(i) 완료", category: "Performance")
+                    _ = await TraceKit.async.measure(name: "서브태스크_\(i)", parentId: parentSpanId) {
+                        await self.simulateProcessing(delay: 0.3)
+                    }
                 }
             }
         }
+
+        await TraceKit.async.endSpan(id: parentSpanId)
 
         let duration = Date().timeIntervalSince(startTime)
         TraceKit.info("무거운 작업 완료: \(String(format: "%.2f", duration))초", category: "Performance")
@@ -139,81 +145,59 @@ final class PerformanceViewModel: ObservableObject {
         isRunning = false
         currentOperation = ""
     }
-    
-    // MARK: - Firebase Performance Demo
-    
-    func runFirebasePerformanceDemo() async {
-        isRunning = true
-        currentOperation = "Firebase Performance 시연 중..."
-        
-        do {
-            let startTime = Date()
-            
-            // FirebasePerformanceHelper를 사용한 성능 추적
-            let data = try await FirebasePerformanceHelper.trace(
-                name: "firebase_demo_operation"
-            ) {
-                await simulateNetworkRequest(delay: 1.0)
-                return "Demo Data"
-            }
-            
-            let duration = Date().timeIntervalSince(startTime)
-            
-            TraceKit.info(
-                "Firebase Performance 데이터 전송 완료: \(data)",
-                category: "Performance"
-            )
-            
-            let result = MeasurementResult(
-                name: "Firebase Performance 추적",
-                duration: duration,
-                timestamp: Date()
-            )
-            results.insert(result, at: 0)
-            
-        } catch {
-            TraceKit.error(
-                "Firebase Performance 실패: \(error.localizedDescription)",
-                category: "Performance"
-            )
-        }
-        
-        isRunning = false
-        currentOperation = ""
-    }
-    
+
+    // MARK: - Complex Span Demo
+
     func runSpanWithFirebaseDemo() async {
         isRunning = true
-        currentOperation = "TraceSpan + Firebase Performance 시연 중..."
-        
+        currentOperation = "복합 Span 자동 전송 시연 중..."
+
         let startTime = Date()
-        
-        // TraceKit의 TraceSpan 사용
-        let spanId = await TraceKit.async.tracer.startSpan(name: "user_data_fetch")
-        
-        // 네트워크 요청 시뮬레이션
-        await simulateNetworkRequest(delay: 1.5)
-        
-        // Span 종료
-        if let span = await TraceKit.async.tracer.endSpan(id: spanId) {
-            // Firebase Performance로 전송
-            await span.sendToFirebasePerformance()
-            
-            let duration = Date().timeIntervalSince(startTime)
-            
-            TraceKit.info(
-                "TraceSpan + Firebase Performance 기록 완료",
-                category: "Performance"
-            )
-            
-            let result = MeasurementResult(
-                name: "TraceSpan + Firebase",
-                duration: duration,
-                timestamp: Date()
-            )
-            results.insert(result, at: 0)
-        }
-        
+
+        // Parent span
+        let parentId = await TraceKit.async.tracer.startSpan(name: "user_data_fetch")
+
+        // Child span 1: API 호출
+        let apiSpanId = await TraceKit.async.tracer.startSpan(
+            name: "api_request",
+            parentId: parentId
+        )
+        await simulateNetworkRequest(delay: 0.8)
+        await TraceKit.async.tracer.endSpan(id: apiSpanId)
+
+        // Child span 2: 데이터 변환
+        let transformSpanId = await TraceKit.async.tracer.startSpan(
+            name: "data_transform",
+            parentId: parentId
+        )
+        await simulateProcessing(delay: 0.4)
+        await TraceKit.async.tracer.endSpan(id: transformSpanId)
+
+        // Child span 3: 캐시 저장
+        let cacheSpanId = await TraceKit.async.tracer.startSpan(
+            name: "cache_save",
+            parentId: parentId
+        )
+        await simulateProcessing(delay: 0.3)
+        await TraceKit.async.tracer.endSpan(id: cacheSpanId)
+
+        // Parent span 종료 - 모든 span이 자동으로 Firebase에 전송됨
+        await TraceKit.async.tracer.endSpan(id: parentId)
+
+        let duration = Date().timeIntervalSince(startTime)
+
+        TraceKit.info(
+            "복합 Span 자동 전송 완료 (parent + 3 children)",
+            category: "Performance"
+        )
+
+        let result = MeasurementResult(
+            name: "복합 Span 자동 추적",
+            duration: duration,
+            timestamp: Date()
+        )
+        results.insert(result, at: 0)
+
         isRunning = false
         currentOperation = ""
     }

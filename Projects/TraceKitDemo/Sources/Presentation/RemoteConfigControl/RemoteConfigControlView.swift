@@ -259,10 +259,8 @@ struct RemoteConfigControlView: View {
                     TraceKit.info(
                         "단계적 배포 시나리오",
                         category: "RemoteConfig",
-                        metadata: [
-                            "scenario": AnyCodable("gradual_rollout"),
-                            "action": AnyCodable("Firebase Console에서 조건부 배포 설정")
-                        ]
+                        ("scenario", "gradual_rollout"),
+                        ("action", "Firebase Console에서 조건부 배포 설정")
                     )
                 }
             }
