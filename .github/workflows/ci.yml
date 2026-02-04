@@ -1,10 +1,12 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
+  # PR에서만 CI 실행 (merge 후 중복 실행 방지)
   pull_request:
     branches: [ main, develop ]
+  # develop 브랜치에 직접 push할 때만 실행
+  push:
+    branches: [ develop ]
   workflow_dispatch:
 
 concurrency:
